@@ -1,14 +1,10 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
-using Excel = Microsoft.Office.Interop.Excel;
 
-namespace ConsoleApp1
+namespace ReadFromExcel
 {
     class Program
     {
@@ -16,39 +12,29 @@ namespace ConsoleApp1
         {
             try
             {
-                Excel.Application excelApp = new Excel.Application();
-                Excel.Workbook excelWorkbook = excelApp.Workbooks.Open(@"C:\Users\***\exhibitA-input.csv");
-                Excel._Worksheet excelWorksheet = excelWorkbook.Sheets[1];
-                Excel.Range xlRange = excelWorksheet.UsedRange;
+                StreamReader csvreader = new StreamReader(@"C:\Users\***\exhibitA-input.csv");
                 HashSet<MusicStreaming> streamList = new HashSet<MusicStreaming>();
+                string inputLine = "";               
 
-                DateTime end;
-                int rowCount = xlRange.Rows.Count;
-                int colCount = xlRange.Columns.Count;
                 MusicStreaming ms = null;
+                DateTime end;
                 DateTime start = DateTime.Now;
-
-                for (int i = 2; i <= rowCount; i++)                                           //starting from second line, not to take header line
+                while ((inputLine = csvreader.ReadLine()) != null)
                 {
-                    for (int j = 1; j <= colCount; j++)
+                    ms = new MusicStreaming();
+                    string[] values = inputLine.Split(new char[] { '\t' });
+                    if (values[3].Contains("10/08/2016"))
                     {
-                        if (xlRange.Cells[i, j] != null && xlRange.Cells[i, j].Value2 != null)
-                        {
-                            ms = new MusicStreaming();
-                            string[] values = xlRange.Cells[i, j].Value2.ToString().Split('\t');
-                            if (values[3].Contains("10/08/2016"))
-                            {
-                                ms.PLAY_ID = values[0];
-                                ms.CLIENT_ID = Convert.ToInt32(values[1]);
-                                ms.SONG_ID = Convert.ToInt32(values[2]);
-                                ms.PLAY_TS = Convert.ToDateTime(values[3]);
-                                streamList.Add(ms);
-                                ms = null;
-                            }
-                        }
+                        ms.PLAY_ID = values[0];
+                        ms.CLIENT_ID = Convert.ToInt32(values[2]);
+                        ms.SONG_ID = Convert.ToInt32(values[1]);
+                        ms.PLAY_TS = Convert.ToDateTime(values[3]);
+
+                        streamList.Add(ms);
+                        ms = null;
                     }
                 }
-                
+
                 end = DateTime.Now;
                 string s = (end - start).ToString();    //time elapsed loading excel to hashset
 
@@ -70,17 +56,8 @@ namespace ConsoleApp1
 
                 var buffer = new StringBuilder();
                 buffer.AppendLine("DISTINCT_PLAY_COUNT,CLIENT_COUNT");
-                desired.ToList().ForEach(item => buffer.AppendLine(String.Format("{0},{1}", item.DISTINCT_PLAY_COUNT, item.CLIENT_COUNT)));
+                desired.ToList().ForEach(item => buffer.AppendLine(String.Format("{0},\t {1}", item.DISTINCT_PLAY_COUNT, item.CLIENT_COUNT)));
                 File.WriteAllText(@"C: \Users\***\exhibitA-output.txt", buffer.ToString());
-
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-                Marshal.ReleaseComObject(xlRange);
-                Marshal.ReleaseComObject(excelWorksheet);
-                excelWorkbook.Close();
-                Marshal.ReleaseComObject(excelWorkbook);
-                excelApp.Quit();
-                Marshal.ReleaseComObject(excelApp);
             }
             catch (Exception ex)
             {
@@ -95,6 +72,5 @@ namespace ConsoleApp1
             public int CLIENT_ID { get; set; }
             public DateTime PLAY_TS { get; set; }
         }
-
     }
 }
